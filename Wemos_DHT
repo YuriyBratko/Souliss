@@ -1,0 +1,113 @@
+/**************************************************************************
+    Souliss - Hello World for Expressif ESP8266
+    
+    This is the basic example, create a software push-button on Android
+    using SoulissApp (get it from Play Store).  
+    
+    Load this code on ESP8266 board using the porting of the Arduino core
+    for this platform.
+        
+***************************************************************************/
+
+// Let the IDE point to the Souliss framework
+#include "SoulissFramework.h"
+
+// Configure the framework
+#include "bconf/MCU_ESP8266.h"              // Load the code directly on the ESP8266
+#include "conf/Gateway.h"                   // The main node is the Gateway, we have just one node
+#include "conf/IPBroadcast.h"
+
+// **** Define the WiFi name and password ****
+#define WIFICONF_INSKETCH
+#define WiFi_SSID               "Local Moose"
+#define WiFi_Password           "W7QGPPSFDX"    
+
+// Include framework code and libraries
+#include <ESP8266WiFi.h>
+#include <EEPROM.h>
+
+/*** All configuration includes should be above this line ***/ 
+#include "Souliss.h"
+#include <DHT.h>
+#define DHTPIN D4     // what pin we're connected to
+#define DHTTYPE DHT22   // DHT 22  (AM2302)
+       
+DHT dht(DHTPIN, DHTTYPE);  //Instantiate a DHT object
+
+
+// This identify the Slot number of typicals 
+#define TEMPERATURE             0          // This is the memory slot used for DHT11 Temp
+#define HUMIDITY                2          // This is the memory slot used for DHT11 Humidity
+#define DEADBAND                0.01       // Deadband value 1% 
+
+
+
+
+// This identify the number of the LED logic
+#define MYLEDLOGIC          0               
+
+// **** Define here the right pin for your ESP module **** 
+#define  OUTPUTPIN     5
+
+void setup()
+{   
+    Initialize();
+
+    // Connect to the WiFi network and get an address from DHCP
+    GetIPAddress();                           
+    SetAsGateway(myvNet_dhcp);       // Set this node as gateway for SoulissApp  
+
+    // This is the vNet address for this node, used to communicate with other
+  // nodes in your Souliss network
+    SetAddress(0xAB01, 0xFF00, 0x0000);
+    SetAsPeerNode(0xAB02, 1);
+  
+    // Set the typical to use
+    Souliss_SetT52(memory_map, TEMPERATURE);
+    Souliss_SetT53(memory_map, HUMIDITY);
+
+            // initialize serial communications at 9600 bps:
+    Serial.begin(115200);
+    Serial.println("DHTxx test!");
+    dht.begin();
+  
+}
+
+void loop()
+{ 
+    // Here we start to play
+    EXECUTEFAST() {                     
+        UPDATEFAST();   
+        
+        FAST_510ms() {   // We process the logic and relevant input and output every 50 milliseconds
+                Souliss_Logic_T52(memory_map, TEMPERATURE, DEADBAND, &data_changed);
+                Souliss_Logic_T53(memory_map, HUMIDITY, DEADBAND, &data_changed);
+        } 
+              
+        // Here we handle here the communication with Android
+        FAST_GatewayComms();                                        
+    }
+
+     EXECUTESLOW() {
+         UPDATESLOW();
+                       
+         SLOW_10s() {  
+
+             
+                    float temperature = dht.readTemperature();
+                    
+                    Souliss_ImportAnalog(memory_map, TEMPERATURE, &temperature);
+                    Serial.print ("Temp  ");
+                    Serial.print (temperature);                    
+
+                    // Read humidity value from DHT sensor and convert from single-precision to half-precision
+                    float humidity = dht.readHumidity();
+                    
+                    Souliss_ImportAnalog(memory_map, HUMIDITY, &humidity);
+                    Serial.print (" & Hum  ");    
+                    Serial.println (humidity);
+                 
+              
+          }
+    }        
+} 
