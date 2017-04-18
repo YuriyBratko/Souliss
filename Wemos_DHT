@@ -41,7 +41,7 @@ DHT dht(DHTPIN, DHTTYPE);  //Instantiate a DHT object
 #define DEADBAND                0.01       // Deadband value 1% 
 
 
-
+//Spacer
 
 // This identify the number of the LED logic
 #define MYLEDLOGIC          0               
